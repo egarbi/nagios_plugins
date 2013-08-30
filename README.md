@@ -8,7 +8,7 @@ Description
 mates and I, have written and expanded over the last 2 years or so, working a monitoring
 area in a pretty popular company.
 
-They have mostly been written in Perl/Bash
+They have mostly been written in Perl/Bash.
 
 Overview of Available Plugins
 -----------------------------
