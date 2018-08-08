@@ -4,7 +4,7 @@ Nagios Plugins :: nagios-plugins
 Description
 ------------
 
-`nagios-plugins` pretend to be a collection of various customized plugins that my
+`nagios-plugins` intends to be a collection of various customized plugins that my
 mates and I, have written and expanded over the last 2 years or so, working a monitoring
 area in a pretty popular company.
 
