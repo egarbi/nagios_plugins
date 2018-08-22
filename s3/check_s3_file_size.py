@@ -6,6 +6,7 @@ import botocore
 import boto3
 import argparse
 import re
+from botocore.config import Config
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='This script is a Nagios check that \
@@ -21,6 +22,9 @@ parser.add_argument('--bucketname', dest='bucketname', type=str, required=True,
 parser.add_argument('--bucketfolder', dest='bucketfolder', type=str, default='',
                     help='Folder to check inside bucket (optional).')
 
+parser.add_argument('--proxyhost', dest='proxyhost', type=str, default='',
+                    help='Proxy to establish a connection trough (optional).')
+
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug output.')
 
@@ -30,6 +34,7 @@ args = parser.parse_args()
 bucketname = args.bucketname
 bucketfolder = args.bucketfolder
 bucketfolder_regex = '^' + bucketfolder
+proxyhost = args.proxyhost
 
 filecount = 0
 
@@ -42,7 +47,10 @@ if (args.debug):
     print "DEBUG: Connecting to S3"
 
 session = boto3.session.Session(profile_name=args.profile)
-s3 = session.resource('s3')
+if (args.proxyhost):
+  s3 = session.resource('s3',config=Config(proxies={'http': proxyhost, 'https': proxyhost}))
+else:
+  s3 = session.resource('s3')
 
 if (args.debug):
     print "DEBUG: S3 Connection: %s" % s3
