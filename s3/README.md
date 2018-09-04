@@ -10,7 +10,7 @@ CRITICAL: There is/are 1 empty file/s in this bucket
 ```
 ### Checking min age of files in a bucket
 ```
-./check_s3_file_age.py --debug --profile testing --bucketname "acloudgurupresigned1" --warning 390 --critical 400 --files "hello.txt,vacio.txt"
+./check_s3_file_age.py --profile testing --bucketname "acloudgurupresigned1" --warning 390 --critical 400 --files "hello.txt,vacio.txt"
 CRITICAL: There are 1 files in critical status: ['hello.txt']
 ```
 
