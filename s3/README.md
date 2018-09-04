@@ -13,7 +13,7 @@ if you are behind a proxy:
 
 CRITICAL: There is/are 1 empty file/s in this bucket
 ```
-### Checking min age of files in a bucket
+### Checking age of files in a bucket
 ```
 > ./check_s3_file_age.py --profile testing \
 --bucketname "acloudgurupresigned1" \
