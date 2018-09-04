@@ -67,25 +67,20 @@ parser.add_argument('--profile', dest='profile', type=str, required=False, defau
 parser.add_argument('--bucketname', dest='bucketname', type=str, required=True,
                     help='Name of S3 bucket')
 
-parser.add_argument('--minfileage', dest='minfileage', type=int, default=0,
-                    help='Minimum age for files in an S3 bucket in hours. \
+parser.add_argument('--warning', dest='warning', type=int, default=0,
+                    help='The age of the file in hours to generate a warning notification \
                           Default is 0 hours (disabled).\
                           ')
 
-parser.add_argument('--maxfileage', dest='maxfileage', type=int, default=0,
-                    help='Maximum age for files in an S3 bucket in hours. \
+parser.add_argument('--critical', dest='critical', type=int, default=0,
+                    help='The age of the file in hours to generate a critical notification \
                           Default is 0 hours (disabled).')
 
-parser.add_argument('--bucketfolder', dest='bucketfolder', type=str, default='',
-                    help='Folder to check inside bucket (optional).')
+parser.add_argument('--files', dest='files', type=str, required=True,
+                    help='List of files to be checked within the bucketname (ie: ["path/to/one/file","path/to/another/file"])')
 ####
 # Add arg option for s3 region?
 ###
-
-parser.add_argument('--listfiles', action='store_true',
-                    help='Enables listing of all files in bucket to stdout. \
-                          Use with caution!')
-
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug output.')
 
@@ -93,20 +88,17 @@ args = parser.parse_args()
 
 # Assign variables from command line arguments
 bucketname = args.bucketname
-minfileage = args.minfileage
-maxfileage = args.maxfileage
-bucketfolder = args.bucketfolder
-bucketfolder_regex = '^' + bucketfolder
-
-maxfilecount = 0
-minfilecount = 0
-totalfilecount = 0
+warning = args.warning
+critical = args.critical
+files = args.files.split(",")
+criticallist = []
+warninglist = []
 
 if (args.debug):
     print '########## START DEBUG OUTPUT ############'
     print 'DEBUG: S3 BUCKET NAME: ' + str(bucketname)
-    print 'DEBUG: MIN FILE AGE: ' + str(minfileage)
-    print 'DEBUG: MAX FILE AGE: ' + str(maxfileage)
+    print 'DEBUG: WARNING THRESHOLD: ' + str(warning)
+    print 'DEBUG: CRITICAL THRESHOLD: ' + str(critical)
 
 
 if (args.debug):
@@ -141,83 +133,40 @@ else:
 if (args.debug):
     print "Bucket: %s" % bucket
 
-# Figure out time delta between current time and max/min file age
-maxagetime = datetime.datetime.now(
-    UTC()) - datetime.timedelta(hours=maxfileage)
+# Figure out time delta between current time and warning/critical thresholds
+warningagetime = datetime.datetime.now(
+    UTC()) - datetime.timedelta(hours=warning)
 if (args.debug):
-    print 'MAX AGE TIME: ' + str(maxagetime)
+    print 'WARNING AGE TIME: ' + str(warningagetime)
 
-minagetime = datetime.datetime.now(
-    UTC()) - datetime.timedelta(hours=minfileage)
+criticalagetime = datetime.datetime.now(
+    UTC()) - datetime.timedelta(hours=critical)
 if (args.debug):
-    print 'MIN AGE TIME: ' + str(minagetime)
+    print 'CRITICAL AGE TIME: ' + str(criticalagetime)
 
-# Loop through keys (files) in the S3 bucket and
-# check each one for min and max file age.
-for key in bucket.objects.filter(Prefix=bucketfolder):
-    if (re.match(bucketfolder_regex, str(key.key))):
-        if (args.listfiles):
-            print '|' + str(key.storage_class) + '|' + str(key.name) + '|' \
-                  + str(key.last_modified.replace(tzinfo=UTC()))
-        if key.last_modified < maxagetime:
-            if (args.listfiles):
-                print 'Found file older than maxfileage of ' + str(maxfileage) + ' hours'
-            maxfilecount += 1
-        # print key.__dict__
-        if key.last_modified > minagetime:
-            if (args.listfiles):
-                print 'Found file newer than minfileage of ' + str(minfileage) + ' hours'
-            minfilecount += 1
-        totalfilecount += 1
+for file in files:
+    object = s3.Object(bucketname,file)
+    last_modified = object.last_modified
+    if (args.debug):
+      print ' Age of {0}: {1}'.format(file,last_modified)
+    if last_modified < criticalagetime:
+        criticallist.append(file)
+    elif last_modified > criticalagetime and last_modified < warningagetime:
+        warninglist.append(file)
 
-# Begin formatting status message for Nagios output
-# This is conditionally formatted based on requested min/max options.
-msg = ' -'
-if minfileage > 0:
-    msg = msg + ' MIN:' + str(minfileage) + 'hrs'
-if maxfileage > 0:
-    msg = msg + ' MAX:' + str(maxfileage) + 'hrs'
-
-if maxfileage > 0:
-    msg = msg + ' - Files exceeding MAX time: ' + str(maxfilecount)
-
-if minfileage > 0:
-    msg = msg + ' - Files meeting MIN time: ' + str(minfilecount)
-
-msg = msg + ' - Total file count: ' + str(totalfilecount)
-
-
-# I think there probably is a better way of doing this but what I have here works.
-#
-# Decide exit code for Nagios based on maxfilecount and minfilecount results.
-#
-# maxfilecount should equal zero for green/OK
-# minfilecount should be greater than zero for green/OK
-#
-if minfileage == 0 and maxfileage == 0:
-    statusline = 'WARNING: No max or min specified. Please specify at least one.' + msg
+lengthCritical = len(criticallist)
+lengthWarning = len(warninglist)
+if lengthCritical > 0 and lengthWarning > 0:
+    print 'CRITICAL: There are {0} files in critical status: {1} and {2} in warning status: {3} '.format(lengthCritical, criticallist, lengthWarning, warninglist)
+    exitcode = 2
+elif lengthCritical > 0 and lengthWarning == 0:
+    print 'CRITICAL: There are {0} files in critical status: {1}'.format(lengthCritical, criticallist)
+    exitcode = 2
+elif lengthCritical == 0 and lengthWarning > 0:
+    print 'WARNING: There are {0} files: in warning status: {1}'.format(lengthWarning, warninglist)
     exitcode = 1
-elif maxfilecount == 0 and minfilecount > 0:
-    statusline = 'OK: No S3 files exceeding time boundaries.' + msg
-    exitcode = 0
-elif (maxfilecount > 0 or minfilecount == 0) and maxfileage > 0 and minfileage > 0:
-    statusline = 'CRITICAL: S3 files exceed time boundaries.' + msg
-    exitcode = 2
-elif maxfilecount > 0 and maxfileage > 0 and minfileage == 0:
-    statusline = 'CRITICAL: S3 files exceed MAX time boundaries.' + msg
-    exitcode = 2
-elif minfilecount == 0 and maxfileage == 0 and minfileage > 0:
-    statusline = 'CRITICAL: S3 files do not meet MIN time requirement.' + msg
-    exitcode = 2
-elif minfilecount > 0 and maxfileage == 0 and minfileage > 0:
-    statusline = 'OK: S3 files meet MIN time boundaries.' + msg
-    exitcode = 0
-elif maxfilecount == 0 and maxfileage > 0 and minfileage == 0:
-    statusline = 'OK: S3 files meet MAX time boundaries.' + msg
-    exitcode = 0
 else:
-    statusline = 'UNKNOWN: ' + msg
-    exitcode = 3
+    print 'OK: All files are within the time boundaries'
+    exitcode = 0
 
-print statusline
 exit(exitcode)
