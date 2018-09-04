@@ -32,6 +32,6 @@ if you are behind a proxy:
 --files "hello.txt,vacio.txt" \
 --proxyhost "127.0.0.1:3128"
 
-CRITICAL: There is/are 1 empty file/s in this bucket
+CRITICAL: There are 1 files in critical status: ['hello.txt']
 ```
 
