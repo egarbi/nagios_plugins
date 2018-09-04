@@ -10,7 +10,7 @@ CRITICAL: There is/are 1 empty file/s in this bucket
 ```
 ### Checking min age of files in a bucket
 ```
-./check_s3_file_age.py --profile testingnagios --bucketname "somebucket" --minfileage 10000000
-OK: S3 files meet MIN time boundaries. - MIN:10000000hrs - Files meeting MIN time: 1 - Total file count: 1
+./check_s3_file_age_modified.py --debug --profile testing --bucketname "acloudgurupresigned1" --warning 390 --critical 400 --files "hello.txt,vacio.txt"
+CRITICAL: There are 1 files in critical status: ['hello.txt']
 ```
 
