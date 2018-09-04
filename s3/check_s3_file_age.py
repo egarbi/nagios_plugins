@@ -67,6 +67,9 @@ parser.add_argument('--profile', dest='profile', type=str, required=False, defau
 parser.add_argument('--bucketname', dest='bucketname', type=str, required=True,
                     help='Name of S3 bucket')
 
+parser.add_argument('--proxyhost', dest='proxyhost', type=str, default='',
+                    help='Proxy to establish a connection trough (optional).')
+
 parser.add_argument('--warning', dest='warning', type=int, default=0,
                     help='The age of the file in hours to generate a warning notification \
                           Default is 0 hours (disabled).\
@@ -88,6 +91,7 @@ args = parser.parse_args()
 
 # Assign variables from command line arguments
 bucketname = args.bucketname
+proxyhost = args.proxyhost
 warning = args.warning
 critical = args.critical
 files = args.files.split(",")
@@ -105,7 +109,10 @@ if (args.debug):
     print "DEBUG: Connecting to S3"
 
 session = boto3.session.Session(profile_name=args.profile)
-s3 = session.resource('s3')
+if (args.proxyhost):
+  s3 = session.resource('s3',config=Config(proxies={'http': proxyhost, 'https': proxyhost}))
+else:
+  s3 = session.resource('s3')
 
 if (args.debug):
     print "DEBUG: S3 Connection: %s" % s3
